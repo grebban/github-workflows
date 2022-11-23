@@ -1,0 +1,52 @@
+name: Grebban - React CI
+
+on:
+ push:
+   branches: [ main, next, master, develop ]
+ pull_request:
+   branches: [ main, next, master, develop ]
+
+jobs:
+  validation_and_build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Can this be improved to not fetch EVERYTHING?
+      - name: Determine node version from .nvmrc
+        run: echo "NODE_VERSION=$(cat .nvmrc)" >> $GITHUB_OUTPUT
+        id: nvm
+      - name: Setup NodeJS - ${{ steps.nvm.outputs.NODE_VERSION }}
+        uses: actions/setup-node@v3
+        id: setup-node
+        with:
+          node-version: ${{ steps.nvm.outputs.NODE_VERSION }}
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile --prefer-offline
+
+      - name: Validate all commit messages in the pull request
+        if: ${{ github.event_name == 'pull_request' }}
+        run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
+
+      - name: Validate the commit message
+        if: ${{ github.event_name == 'push' }}
+        run: npx commitlint --from=HEAD~1
+
+    #   - name: Format Check
+    #     run: npm run format-check --if-present
+
+    #   - name: Lint Check
+    #     run: npm run lint-check --if-present
+
+    #   - name: Test
+    #     run: npm test --if-present
+
+      - name: Build - QA
+        if: ${{ github.base_ref == 'develop' }}
+        run: env=qa yarn build
+
+      - name: Build - Production
+        if: ${{ github.base_ref == 'master' || github.base_ref == 'main' || github.base_ref == 'next' }}
+        run: env=production yarn build

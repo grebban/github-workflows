@@ -1,10 +1,7 @@
 name: Grebban - React CI
 
 on:
- push:
-   branches: [ main, next, master, develop ]
- pull_request:
-   branches: [ main, next, master, develop ]
+  workflow_call:
 
 jobs:
   validation_and_build:
